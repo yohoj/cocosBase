@@ -3,14 +3,18 @@
  */
 import AudioMgr from '../mgr/AudioMgr';
 import DataMgr from "../mgr/DataMgr";
+import UIManager from "../mgr/UIManager";
 
 const {ccclass, property} = cc._decorator;
 
 @ccclass
 export default class VideoAd extends cc.Component {
+	_successCallback = null;
+	_failCallback = null;
 
+	_flag = false;
 
-	init(successCallback, failCallback) {
+	init() {
 
 		this.node.active = true;
 		if (!window.wx) return;
@@ -21,7 +25,7 @@ export default class VideoAd extends cc.Component {
 			return;
 		}
 		this.videoAd = wx.createRewardedVideoAd({
-			adUnitId: 'adunit-3be2be09281de36b'
+			adUnitId: 'adunit-6c3fb88b35c82a79'
 		});
 
 		this.videoAd.onLoad(() => {
@@ -31,42 +35,50 @@ export default class VideoAd extends cc.Component {
 		});
 
 		this.videoAd.onClose(res => {
+			this._flag = false;
 			AudioMgr.instance.resumeAll();
 			// 用户点击了【关闭广告】按钮
 			// 小于 2.1.0 的基础库版本，res 是一个 undefined
 			if (res && res.isEnded || res === undefined) {
-				if (successCallback) {
-					DataMgr.instance.videoCount += 1;
-					successCallback();
-				}
+				DataMgr.instance.videoCount += 1;
+				this._successCallback && this._successCallback();
 			} else {
-				if (failCallback) {
-					failCallback();
-				}
+				this._failCallback && this._failCallback();
 				// 播放中途退出，不下发游戏奖励
 			}
 		});
 
 		this.videoAd.onError(err => {
 			console.log(err);
-			failCallback(err);
+			this._flag = false;
+			this._successCallback && this._successCallback();
+			DataMgr.instance.videoCount += 1;
 			/*if (err.errCode == 1005) {
-				UIManager.instance.getUI(SCRIPTS_NAME.UI_Tip).show("视频复活即将开放");
+				UIManager.instance.showTip("视频广告即将开放");
 			} else {
-				UIManager.instance.getUI(SCRIPTS_NAME.UI_Tip).show("视频广告加载失败");
+
+				// UIManager.instance.showTip("视频广告加载失败");
 				return;
 			}*/
 		});
 	}
 
 
-	show() {
+	show(successCallback,failCallback) {
 		return new Promise(((resolve, reject) => {
-			if (this.videoAd) {
+			if(!CC_WECHATGAME){
+				successCallback && successCallback();
+				resolve();
+			}
+			if (this.videoAd && !this._flag) {
+				this._flag = true;
 				this.videoAd.show().then(() => {
 					console.log('激励视频 广告显示');
+					this._successCallback = successCallback;
+					this._failCallback = failCallback;
 					resolve();
 				}).catch(err => {
+					this._flag = false;
 					this.videoAd.load().then(() => this.videoAd.show())
 				});
 			}

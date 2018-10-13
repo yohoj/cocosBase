@@ -56,10 +56,11 @@ export function getLinearVelocityDown(verticalDistance, horizonDistance) {
  * @param node
  * @param duration 震屏时间
  * */
-export function shakeEffect(node,duration=0.02) {
+export function shakeEffect(node,duration=0.02,delay,callback) {
 	node.runAction(
 		cc.repeatForever(
 			cc.sequence(
+				cc.delayTime(delay),
 				cc.moveTo(duration, cc.p(5, 7)),
 				cc.moveTo(duration, cc.p(-6, 7)),
 				cc.moveTo(duration, cc.p(-13, 3)),
@@ -68,7 +69,10 @@ export function shakeEffect(node,duration=0.02) {
 				cc.moveTo(duration, cc.p(2, -8)),
 				cc.moveTo(duration, cc.p(-8, -10)),
 				cc.moveTo(duration, cc.p(3, 10)),
-				cc.moveTo(duration, cc.p(0, 0))
+				cc.moveTo(duration, cc.p(0, 0)),
+				cc.callFunc(()=>{
+					callback && callback();
+				})
 			)
 		)
 	);
@@ -96,7 +100,54 @@ export function createImage(sprite, url) {
 	};
 	image.src = url;
 }
+/**
+ * 数值转换
+ * */
+export function numToString(value) {
+	if(value < 0){
+		return '0';
+	}
+	if(value < 10000){
+		return value + '';
+	}
+	else{
+		if(value % 10000 == 0){
+			return value/10000 + '万';
+		}
+		else{
+			return (value/10000).toFixed(2) + '万';
+		}
+	}
+}
+export function oneToFourString(value) {
+	if(value < 1000){
+		return value + '';
+	}
+	else{
+		if(value % 1000 == 0){
+			return value/1000 + 'k';
+		}
+		else{
+			return (value/1000).toFixed(2) + 'k';
+		}
+	}
+}
 
+/**
+ * 保留小数
+ * */
+export function toFixed(num,count){
+	let str = '';
+	let aStr = num.toString();
+	let aArr = aStr.split('.');
+	if(aArr.length > 1) {
+		str = aArr[0] + "." + aArr[1].substr(0, count);
+	}
+	if(str==''){
+		str = aStr;
+	}
+	return str;
+}
 /**
  * 获取当前节点转换到某节点下的坐标
  * @param {cc.Node} curNode
@@ -120,15 +171,41 @@ export function isToday(time) {
 
 /**
  * 格式化时间
+ * fmt "yyyy-MM-dd hh:mm:ss"
  * */
 export function timeFormat(second) {
 	if (second < 60) {
-		return '00:' + stringFormat(second,2);
+		return '00' + '00:' + stringFormat(second,2);
 	}
-	else {
-		return stringFormat(Math.floor(second / 60),2) +':' + stringFormat(second % 60,2);
+	else if(second < 60*60){
+		return '00:' + stringFormat(Math.floor(second / 60),2) +':' + stringFormat(second % 60,2);
+	}
+	else{
+		return stringFormat(Math.floor(second / 60 / 60),2) + ':' + stringFormat(Math.floor(second%3600/60),2) +':' + stringFormat(second % 3600 % 60,2);
 	}
 }
+export function dateFormat(date,fmt){
+	let o = {
+		"M+" : date.getMonth()+1,                 //月份
+		"d+" : date.getDate(),                    //日
+		"h+" : date.getHours(),                   //小时
+		"m+" : date.getMinutes(),                 //分
+		"s+" : date.getSeconds(),                 //秒
+		"q+" : Math.floor((date.getMonth()+3)/3), //季度
+		"S"  : date.getMilliseconds()             //毫秒
+	};
+	if(/(y+)/.test(fmt)) {
+		fmt=fmt.replace(RegExp.$1, (date.getFullYear()+"").substr(4 - RegExp.$1.length));
+	}
+	for(let k in o) {
+		if(new RegExp("("+ k +")").test(fmt)){
+			fmt = fmt.replace(RegExp.$1, (RegExp.$1.length==1) ? (o[k]) : (("00"+ o[k]).substr((""+ o[k]).length)));
+		}
+	}
+	return fmt;
+}
+
+
 
 /**
  * */

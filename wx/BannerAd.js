@@ -15,7 +15,7 @@ export default class BannerAd extends cc.Component {
 	};
 
 	show(config, index) {
-		console.log("ad_config_show", config);
+		// console.log("ad_config_show", config);
 		if (cc.sys.platform != cc.sys.WECHAT_GAME) {
 			return;
 		}
@@ -61,14 +61,14 @@ export default class BannerAd extends cc.Component {
 		let width = this.node.width * scaleX;
 		let height = this.node.height * scaleY;
 		let top = (fra.height / 2 - this.node.y * scaleY) - height / 2;
-		let left = (fra.width / 2 + this.node.x * scaleX) - width / 2;
-		console.log(left,top,width,height);
+		let left = (fra.width / 2 + this.node.x * scaleX) - width / 2-20;
+		// console.log(left,top,width,height);
 		if (this.bannerAd) {
 			this.bannerAd.destroy();
 		}
 
 		this.bannerAd = wx.createBannerAd({
-			adUnitId: 'adunit-65917b97c5ff1591',
+			adUnitId: 'adunit-d00b7d3ede10f449',
 			style: {
 				left: left,
 				top: top,

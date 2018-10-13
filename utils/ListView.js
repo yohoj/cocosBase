@@ -165,6 +165,9 @@ export default class ListView extends cc.Component {
 
 	addToContent() {
 		let prefab = this._pool.get();
+		if(!prefab){
+			prefab = cc.instantiate(this.prefab);
+		}
 		let count = 0;
 		this._horizonCount = 1;
 		switch (this.type) {
@@ -217,9 +220,11 @@ export default class ListView extends cc.Component {
 				break;
 			}
 			obj.init(this._list[i]);
-			this.content.addChild(prefab);
+			this.content.addChild(prefab,i);
 		}
-		this.content.y = 0;
+		this.scheduleOnce(()=>{
+			this.content.y = 0;
+		},0.04);
 	}
 
 	getPrefabPosition(prefab,index){
@@ -265,6 +270,7 @@ export default class ListView extends cc.Component {
 				let child = this.content.children[0];
 				if(!child){
 					return;
+
 				}
 				if(this.node.getComponent(cc.ScrollView).vertical){
 					if (this._lastPosition.y  < this.content.y) {
@@ -324,6 +330,7 @@ export default class ListView extends cc.Component {
 					target = this.getMinChild();
 					tag = target ? target.getTag() + 1 : 0;
 					if (tag > this._list.length - 1 || !target) {
+						this._pool.put(prefab);
 						return;
 					}
 					prefab.position = this.getPrefabPosition(prefab,tag);
@@ -336,7 +343,7 @@ export default class ListView extends cc.Component {
 				prefab.setTag(tag);
 				tag = tag < 0 ? 0 : tag;
 				prefab.getComponent(this.scriptName).init(this._list[tag]);
-				this.content.addChild(prefab, 0);
+				this.content.addChild(prefab,tag);
 			}
 		}
 	}
@@ -367,6 +374,7 @@ export default class ListView extends cc.Component {
 					target = this.getMaxChild();
 					tag = target ? target.getTag() - 1 : 0;
 					if (tag < 0 || !target) {
+						this._pool.put(prefab);
 						return;
 					}
 					bBack = true;
@@ -380,7 +388,7 @@ export default class ListView extends cc.Component {
 				prefab.setTag(tag);
 				tag = tag > this._list.length-1 ? this._list.length-1 : tag;
 				prefab.getComponent(this.scriptName).init(this._list[tag]);
-				prefab.parent = this.content;
+				this.content.addChild(prefab,tag);
 			}
 
 		}

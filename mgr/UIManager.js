@@ -1,6 +1,14 @@
-import {SCENE_PATH} from "../utils/ResourcePath";
+import {PANEL_PATH, SCENE_PATH} from "../utils/ResourcePath";
 import WxSdk from "../wx/WxSdk";
 import AudioMgr from "./AudioMgr";
+import VideoAd from "../wx/VideoAd";
+import BannerAd from "../wx/BannerAd";
+import {BANNER_AD_IGNORE_LIST, FEEDBACK_LIST, LOADING_IGNORE_LIST, SHOW_APP_LIST} from "./ConfigMgr";
+import DataMgr from "./DataMgr";
+import {EVENT_ID} from "./EventMgr";
+import {OPEN_OTHER_GAME} from "../views/panels/PanelOtherGameJump";
+import EventMgr from "./EventMgr";
+import NoticeRolling from "../views/component/NoticeRolling";
 
 const {ccclass, property} = cc._decorator;
 /*
@@ -16,7 +24,16 @@ export default class UIManager extends cc.Component {
 	uiExParentNode = null;
 
 	@property(cc.Node) //todo...
+	uiExPanelParentNode = null;
+
+	@property(cc.Node) //todo...
+	uiExPanelOtherGameParentNode = null;
+
+	@property(cc.Node) //todo...
 	uiLoadingNode = null;
+
+	@property(cc.Node)
+	adParent = null;
 
 	@property(cc.Sprite)
 	sprLoad = null;
@@ -29,6 +46,17 @@ export default class UIManager extends cc.Component {
 
 	@property(cc.Label)
 	labContent = null;
+
+	@property(cc.Node)
+	bannerNode = null;
+
+	@property(cc.Node)
+	videoNode = null;
+
+	@property(cc.Node)
+	scrollTipNode = null;
+
+	_feedBackBtn = null;
 
 
 	_UI_Map = {};//所有的UI对象数组
@@ -46,6 +74,7 @@ export default class UIManager extends cc.Component {
 	onLoad() {
 		UIManager.instance = this;
 		this.showUI(SCENE_PATH.SCENE_LOADING);
+		this.videoNode.getComponent(VideoAd).init();
 	}
 
 	//uiName = EnumType_UI.UI_GAME;
@@ -54,6 +83,8 @@ export default class UIManager extends cc.Component {
 			onComplete = onProgress;
 			onProgress = null;
 		}
+		this.showBannerAd(prefabPath);
+		this.showFeedbackBtn(prefabPath);
 		let arr = prefabPath.split('/');
 		let scriptName = arr[arr.length - 1];
 		// console.log("open getScript = ", getScriptName);
@@ -61,11 +92,12 @@ export default class UIManager extends cc.Component {
 		if (Object.keys(this._UI_Map).length > 0) {
 			for (let key in this._UI_Map) {
 				if (key == scriptName) {
-					if (scriptName.indexOf('Panel') >= 0) {
+					if (!LOADING_IGNORE_LIST.includes(prefabPath)) {
 						this.showLoading();
+						this.showOtherGameJump(prefabPath);
 						this.scheduleOnce(() => {
 							this.hideLoading();
-						}, 0.5);
+						}, 0.2);
 					}
 					this._UI_Map[scriptName].show(params);
 					return;
@@ -76,7 +108,7 @@ export default class UIManager extends cc.Component {
 			if (onProgress) {
 				onProgress(completeCnt, totalCnt);
 			}
-			if (scriptName.indexOf('SceneGame') < 0) {
+			if (!LOADING_IGNORE_LIST.includes(prefabPath)) {
 				this.showLoading();
 			}
 		}, (err, prefab) => {
@@ -91,10 +123,14 @@ export default class UIManager extends cc.Component {
 			else if(prefab.indexOf('Panel') >= 0){
 				this.uiExParentNode.addChild(uiNode);
 			}*/
+			if (!uiNode) {
+				return;
+			}
 			uiNode.setContentSize(cc.winSize);
 			uiNode.setPosition(0, 0);
 			this._UI_Map[scriptName] = uiNode.getComponent(scriptName);
 			this._UI_Map[scriptName].show(params);
+			this.showOtherGameJump(prefabPath);
 			if (onComplete) {
 				onComplete();
 			}
@@ -102,7 +138,7 @@ export default class UIManager extends cc.Component {
 				if (scriptName.indexOf('Panel') >= 0) {
 					this.scheduleOnce(() => {
 						this.hideLoading();
-					}, 0.5);
+					}, 0.2);
 				}
 				else {
 					this.hideLoading();
@@ -110,6 +146,18 @@ export default class UIManager extends cc.Component {
 			}
 		});
 
+	}
+
+
+	closePanel() {
+		for (let i = 0; i < this.uiExParentNode.children.length; ++i) {
+			let child = this.uiExParentNode.children[i];
+			if (child.getComponent(child.name)) {
+				child.stopAllActions();
+				this.uiExParentNode.removeChild(child, false);
+				i--;
+			}
+		}
 	}
 
 
@@ -169,6 +217,9 @@ export default class UIManager extends cc.Component {
 	}
 
 	showLoading() {
+		if (this.uiLoadingNode.active) {
+			return;
+		}
 		this.uiLoadingNode.active = true;
 		this.playLoadingAction();
 	}
@@ -188,8 +239,9 @@ export default class UIManager extends cc.Component {
 		this.sprLoad.node.stopAllActions();
 		this.sprLoad.node.rotation = 0;
 	}
+
 	//提示
-	showTip(content,delay = 1){
+	showTip(content, delay = 1) {
 		this.labContent.string = content;
 		this.playTipAction(delay);
 	}
@@ -207,6 +259,82 @@ export default class UIManager extends cc.Component {
 			this.promt.active = false;
 			this.promt.opacity = 0;
 		})));
+	}
+
+	isGuideShow() {
+		return !!this.uiExPanelParentNode.children[0];
+
+	}
+
+	showBannerAd(prefabPath) {
+		if (DataMgr.instance.bInGuide()) {
+			this.bannerNode.active = false;
+			return;
+		}
+		if (BANNER_AD_IGNORE_LIST.includes(prefabPath)) {
+			this.bannerNode.active = false;
+			return;
+		}
+		this.bannerNode.getComponent(BannerAd).show();
+	}
+
+	showVideoAd(successCallback, failCallback) {
+		this.videoNode.getComponent(VideoAd).show(successCallback, failCallback);
+	}
+
+	showOtherGameJump(prefabPath) {
+		if (DataMgr.instance.bInGuide()) {
+			return;
+		}
+		let result = null;
+		let flag = SHOW_APP_LIST.some(app => {
+			if (app.path == prefabPath) {
+				result = app;
+				return true;
+			}
+		});
+		if (flag) {
+			EventMgr.instance.onDispatchHandler(EVENT_ID.EVENT_SHOW_OTHER_GAME, result.id, result.delay);
+		}
+		else {
+			EventMgr.instance.onDispatchHandler(EVENT_ID.EVENT_HIDE_OTHER_GAME);
+		}
+	}
+
+	showFeedbackBtn(prefabPath) {
+		if (DataMgr.instance.bInGuide()) {
+			return;
+		}
+		let feedbackToggle = DataMgr.instance.serverConfig ? DataMgr.instance.serverConfig.backStage_toggle.feedbackToggle : 0;
+		if (feedbackToggle == 0) {
+			return;
+		}
+		if (FEEDBACK_LIST.includes(prefabPath)) {
+			if (!this._feedBackBtn) {
+				this._feedBackBtn = WxSdk.createFeedbackButton();
+				return;
+			}
+			this._feedBackBtn.show();
+		}
+		else {
+			this.hideFeedBackBtn();
+		}
+		if (DataMgr.instance.sceneGameModel == 1) {
+			this.hideFeedBackBtn();
+		}
+	}
+
+	hideFeedBackBtn() {
+		if (this._feedBackBtn) {
+			this._feedBackBtn.hide();
+		}
+	}
+
+	showScrollTip() {
+		this.scrollTipNode.getComponent(NoticeRolling).show();
+	}
+	closeScrollTip(){
+		this.scrollTipNode.getComponent(NoticeRolling).close();
 	}
 
 }

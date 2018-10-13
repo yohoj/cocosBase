@@ -3,8 +3,16 @@
  */
 // import ServerManager from "../net/ServerManager";
 import {makeRandomInt} from "../utils/Utils";
+import DataMgr from "../mgr/DataMgr";
+import HttpMgr from "../mgr/HttpMgr";
+import {SHARE_MODULE} from "../mgr/ConfigMgr";
 
 export default class WxSdk {
+	static _weGameConfig = {
+		code: "",
+		userInfo: {},
+		query: ""//小游戏的参数
+	};
 
 	/**
 	 * 验证登录状态
@@ -18,11 +26,11 @@ export default class WxSdk {
 		return new Promise((resolve, reject) => {
 			let checkObj = {
 				success: (res) => {
-					console.log('checkSession success',res);
+					console.log('checkSession success', res);
 					resolve();
 				},
 				fail: (res) => {
-					console.log('checkSession fail',res);
+					console.log('checkSession fail', res);
 					reject();
 				},
 			};
@@ -99,8 +107,53 @@ export default class WxSdk {
 		let left = (fra.width / 2 + 0 * scaleX) - width / 2;
 		let button = wx.createUserInfoButton({
 			type: 'image',
-			// text: '开始游戏',
+			text: '开始游戏',
 			image: 'https://game.51dataedu.com/start_game/gold_fish/start_game.png',
+			style: {
+				left: left,
+				top: top,
+				width: width,
+				height: height,
+				lineHeight: 40,
+				backgroundColor: '#ff0000',
+				color: '#ffffff',
+				textAlign: 'center',
+				fontSize: 16,
+				borderRadius: 4
+			},
+			withCredentials: true,
+			lang: 'zh_CN',
+		});
+		button.onTap((res) => {
+			// console.log(res);
+			if (res.userInfo) {
+				button.hide();
+				this._weGameConfig.userInfo = res.userInfo;
+			}
+			successCallback(res);
+		});
+		return button;
+	}
+
+	static createFeedbackButton() {
+		if (cc.sys.platform != cc.sys.WECHAT_GAME) {
+			return;
+		}
+		if (!wx.createFeedbackButton) {
+			return;
+		}
+		let vis = cc.view.getVisibleSize();
+		let fra = cc.view.getFrameSize();
+		let scaleX = fra.width / vis.width;
+		let scaleY = fra.height / vis.height;
+		let width = 102 * scaleX;
+		let height = 106 * scaleY;
+		let top = (fra.height / 2 - (-430) * scaleY) - height / 2;
+		let left = (fra.width / 2 + 325 * scaleX) - width / 2;
+		let button = wx.createFeedbackButton({
+			type: 'image',
+			text: '开始游戏',
+			image: 'https://game.51dataedu.com/feedback/feed_fish/btn_feedback.png',
 			style: {
 				left: left,
 				top: top,
@@ -114,13 +167,7 @@ export default class WxSdk {
 				borderRadius: 4
 			}
 		});
-		button.onTap((res) => {
-			// console.log(res);
-			if (res.userInfo) {
-				button.hide();
-			}
-			successCallback(res);
-		});
+		return button;
 	}
 
 	/**
@@ -155,18 +202,25 @@ export default class WxSdk {
 	 * @param imageUrl string 转发显示图片的链接，可以是网络图片路径或本地图片文件路径或相对代码包根目录的图片文件路径。显示图片长宽比是 5:4
 	 * @param query string 查询字符串，从这条转发消息进入后，可通过 wx.getLaunchInfoSync() 或 wx.onShow() 获取启动参数中的 query。必须是 key1=val1&key2=val2 的格式。
 	 * */
-	static shareAppMessage(title = '', imageUrl = '', query = '') {
+	static shareAppMessage(moduleId, typeId, title = '', imageUrl = '', query = '') {
+		clearTimeout(DataMgr.instance.shareTimeId);
+		if (!title) {
+			let share = DataMgr.instance.serverConfig.share_info;
+			let result = makeRandomInt(share.length, 0);
+			typeId = share[result].id;
+			title = share[result].title;
+			title = title.replace('#nickname#', DataMgr.instance.userInfo.nickname);
+			imageUrl = share[result].url;
+		}
 		if (cc.sys.platform != cc.sys.WECHAT_GAME) {
 			return new Promise((resolve, reject) => {
-				reject();
+				HttpMgr.instance.reqRecordReport(moduleId, typeId);
+				resolve();
 			});
 		}
-		if (!title) {
-			/*let share = ServerManager.instance.getServerConfig().share;
-			title = share.titles[makeRandomInt(share.titles.length, 0)];
-			imageUrl = share.images[makeRandomInt(share.images.length, 0)];*/
-		}
 		if (!query) {
+			query = "inviterOpenId=" + DataMgr.instance.openId + "&shareId=" + typeId;
+			// query = `shareId = ${typeId}`
 			//`roomId=${roomId}`
 			// query = `inviterUserId=${ServerManager.instance.getUserInfo().userId}`;
 		}
@@ -178,16 +232,21 @@ export default class WxSdk {
 				title: title,
 				imageUrl: imageUrl,
 				query: query,
-				success: (res) => {
-					console.log('share sucess', res);
-					resolve(res);
+				/*success: (res) => {
+						console.log('share sucess', res);
+						HttpMgr.instance.reqRecordReport(moduleId, typeId);
+						resolve(res);
 				},
 				fail: (res) => {
-					console.log('share fail', res);
-					reject(res);
-				}
+						console.log('share fail', res);
+						reject(res);
+				}*/
 			};
 			wx.shareAppMessage(data);
+			DataMgr.instance.shareTimeId = setTimeout(() => {
+				console.log('share success');
+				resolve();
+			}, 1000);
 		}))
 
 	}
@@ -200,7 +259,7 @@ export default class WxSdk {
 			return;
 		}
 		wx.showShareMenu({
-			withShareTicket: false,
+			withShareTicket: true,
 			success: (res) => {
 				console.log('开启分享：' + JSON.stringify(res));
 			},
@@ -230,13 +289,17 @@ export default class WxSdk {
 		if (cc.sys.platform != cc.sys.WECHAT_GAME) {
 			return;
 		}
-		let share = ServerManager.instance.getServerConfig().share;
+		let share = DataMgr.instance.serverConfig.share_info;
 		wx.onShareAppMessage(() => {
 			// 用户点击了“转发”按钮
+			let result = makeRandomInt(share.length, 0);
+			HttpMgr.instance.reqRecordReport(SHARE_MODULE.SYSTEM, share[result].id);
+			share[result].title = share[result].title.replace('#nickname#', DataMgr.instance.userInfo.nickname);
+			let query = "inviterOpenId=" + DataMgr.instance.openId + "&shareId=" + share[result].id;
 			return {
-				title: share.titles[makeRandomInt(share.titles.length, 0)],
-				imageUrl: share.images[makeRandomInt(share.images.length, 0)],
-				query: ServerManager.instance.getUserInfo().userId,
+				title: share[result].title,
+				imageUrl: share[result].url,
+				query: query,
 			}
 		});
 	}
@@ -389,19 +452,21 @@ export default class WxSdk {
 	static navigateToMiniProgram(appId, path, extraData) {
 		if (cc.sys.platform != cc.sys.WECHAT_GAME) {
 			return new Promise(((resolve, reject) => {
-				resolve();
+				reject();
 			}));
 		}
 		return new Promise(((resolve, reject) => {
 			let obj = {
 				appId: appId,
 				path: path || "",
-				extraData: extraData,
+				extraData: extraData || '',
 				envVersion: "release", // develop（开发版），trial（体验版），release（正式版）
 				success: () => {
+					console.log('go success');
 					resolve();
 				},
-				fail: () => {
+				fail: (res) => {
+					console.log('fail', res);
 					reject();
 				},
 			}
@@ -410,35 +475,81 @@ export default class WxSdk {
 
 	}
 
-	static getShareInfo(shareTicket, successCallback) {
+	static getShareInfo(shareTicket, successCallback, failCallback) {
 		if (cc.sys.platform != cc.sys.WECHAT_GAME) {
 			return;
 		}
+		console.log('get shareInfo:', shareTicket);
 		wx.getShareInfo({
 			shareTicket: shareTicket,
 			success: successCallback,
+			fail: failCallback,
 		})
 	}
 
-	//分享群判断
+	//分享群判断  result = 0-成功 1-失败 2-已经分享
 	static isShareGroup(res) {
-		console.log('share:', res);
-		let result = false;
-		if (!res.shareTickets) {
-			console.log('fail');
-			return result;
-		}
-		console.log('sucess');
-		return true;
-		res.shareTickets.forEach(shareTicket => {
-			WxSdk.getShareInfo(shareTicket, res => {
-				let data = {
-					encrypted_data: res.encryptedData,
-					iv: res.iv
-				}
-				console.log(data);
-			})
-		});
+		return new Promise(((resolve, reject) => {
+			if (cc.sys.platform != cc.sys.WECHAT_GAME) {
+				resolve(0);
+			}
+			resolve(0);
+			return;
+			let shareAll = DataMgr.instance.serverConfig.backStage_toggle.shareAll;
+			if (shareAll.shareType == 0) {
+				resolve(0);
+				return;
+			}
+			// let result = false;
+			let result = 1;
+			if (!res.shareTickets) {
+				console.log('fail');
+				resolve(result);
+				return;
+			}
+			console.log(res.shareTickets);
+			// return true;
+			res.shareTickets.forEach(shareTicket => {
+				WxSdk.getShareInfo(shareTicket, res => {
+					console.log("shareTicket group = ", res);
+					if (res) {
+						let data = {
+							encryptedData: res.encryptedData,
+							iv: res.iv,
+						}
+						HttpMgr.instance.reqShareGroupInfo(data).then((data) => {
+							let groupID = data.openGId;
+							console.log("onShareGroupInfo group succful = ", groupID);
+							let groupCount = data.count;
+							let maxCount = shareAll.limitGroup;
+							if (maxCount <= 0) {
+								resolve(0);
+								return;
+							}
+							// console.log("onShareGroupInfo group groupID_count = ", groupID_count, "/MaxCount = ", maxCount);
+							if (groupCount < maxCount) {
+								groupCount += 1;
+								DataMgr.instance.setShareGroupRecord(groupID, groupCount);
+								result = 0;
+							} else {
+								result = 2;
+							}
+							resolve(result);
+						}, (err) => {
+							console.error("onShareGroupInfo group error = ", err.message);
+							resolve(result);
+						});
+					} else {
+						resolve(result);
+					}
+
+				}, (res) => {
+					console.log('get share info fail', res)
+					resolve(1);
+				})
+			});
+		}));
+
 	}
 
 	//版本跟新检查
@@ -474,6 +585,16 @@ export default class WxSdk {
 			console.log('新的版本下载失败');
 			failCallback();
 		});
+	}
+
+	/**
+	 * 设置常亮
+	 * */
+	static setKeepScreenOn() {
+		if (cc.sys.platform != cc.sys.WECHAT_GAME) {
+			return;
+		}
+		wx.setKeepScreenOn({keepScreenOn: true});
 	}
 
 
