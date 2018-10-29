@@ -2,7 +2,6 @@
  * Created by yh on 2018/7/26.
  */
 import ServerMgr from "../mgr/ServerMgr";
-import {VERSION} from "../Config";
 
 export default class Server {
 	ready(url, protos) {
