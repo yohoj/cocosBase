@@ -1,0 +1,37 @@
+{
+	"serverConfig":{
+		"share_titles": {
+			"invite_friend": [
+				"农村小伙钓到黄金鱼后，诡异的事情接连不断! ",
+				"美女钓到的这条，居然把军方惊动到了！",
+				"惊悚！这种被辐射的变异鱼，把贝爷都吓尿了！ "
+			]
+		},
+		"share_info": [{
+			"id": 6,
+			"title": "未解之谜：地球五大怪鱼排行榜，一次可产卵3亿",
+			"url": "https://game.51dataedu.com/upload/image/2018/10/09/c9447897-95d9-48c1-9c21-f97f5b7325dd.jpg"
+		},
+			{
+				"id": 28,
+				"title": "好友 #nickname# 给你下了战书：鲲之王者！不服来战",
+				"url": "https://game.51dataedu.com/upload/image/2018/10/01/ad3d7b9d-5768-491e-88d9-6bce7a388af1.jpg"
+			},
+			{
+				"id": 30,
+				"title": "老公居然背着我驯养如此巨鲲，吓哭！",
+				"url": "https://game.51dataedu.com/upload/image/2018/10/01/6b9c257a-20e7-4f0f-ba5e-04e942480046.jpg"
+			},
+			{
+				"id": 33,
+				"title": "惊天奇闻！！！看美女如何驯服凶兽？！",
+				"url": "https://game.51dataedu.com/upload/image/2018/10/17/ab4c2ddb-b579-4b81-9622-ed42a77c9564.jpg"
+			},
+			{
+				"id": 34,
+				"title": "好友 #nickname#发来求救“ sos！我的鲲在被异兽吞噬“",
+				"url": "https://game.51dataedu.com/upload/image/2018/10/17/2fecf18a-53f9-42df-a882-6c47a48cc0c1.jpg"
+			}
+		]
+	}
+}
