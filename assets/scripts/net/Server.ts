@@ -4,6 +4,12 @@
 import ServerMgr from "../mgr/ServerMgr";
 
 export default class Server {
+	private _url;
+	private _protos;
+	private  _connected;
+	private _serverSession;
+	private _resolve;
+	private _initialized;
 	ready(url, protos) {
 		this._url = url;
 		this._protos = protos;
@@ -86,10 +92,10 @@ export default class Server {
 
 	_onClose = (event) => {
 		this._connected = false;
-		ServerMgr.instance.reconnect().then(()=>{
-			console.log('reconnect');
-		});
 		console.log('connect close');
+		/*ServerMgr.instance.reconnect().then(()=>{
+			console.log('reconnect');
+		});*/
 	};
 
 	_onError = (event) => {
