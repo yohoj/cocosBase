@@ -42,8 +42,8 @@ export default class ListView extends cc.Component {
 	 * @property {Number} paddingLeft
 	 */
 	@property({type:cc.Integer,visible(){
-		return this.type == Type.HORIZONTAL || this.type == Type.GRID;
-	}})
+			return this.type == Type.HORIZONTAL || this.type == Type.GRID;
+		}})
 	paddingLeft = 0;
 
 
@@ -100,7 +100,7 @@ export default class ListView extends cc.Component {
 	scriptName = '';
 	/**
 	 *子控件预制体
-	* */
+	 * */
 	@property(cc.Prefab)
 	prefab = null;
 	/**
@@ -116,8 +116,8 @@ export default class ListView extends cc.Component {
 	 * */
 	_list = [];
 	/**
-	* 上次滚动点
-	* */
+	 * 上次滚动点
+	 * */
 	_lastPosition = {x:0,y:0};
 	/**
 	 * gird 模式下一行的个数
@@ -212,7 +212,7 @@ export default class ListView extends cc.Component {
 		for (let i = 0; i < count; ++i) {
 			let prefab = this._pool.get();
 			prefab.position = this.getPrefabPosition(prefab,i);
-			prefab.setTag(i);
+			prefab.zIndex = i;
 			prefab.active = true;
 			let obj = prefab.getComponent(this.scriptName);
 			if(!obj){
@@ -324,11 +324,11 @@ export default class ListView extends cc.Component {
 			for(let i=0; i<this._horizonCount; ++i){
 				let target = this.getMaxChild();
 				// let child = this.content.children[0];
-				let tag = target ? target.getTag() - 1 : 0;
+				let tag = target ? target.zIndex - 1 : 0;
 				let prefab = this._pool.get();
 				if (tag < 0) {
 					target = this.getMinChild();
-					tag = target ? target.getTag() + 1 : 0;
+					tag = target ? target.zIndex + 1 : 0;
 					if (tag > this._list.length - 1 || !target) {
 						this._pool.put(prefab);
 						return;
@@ -340,7 +340,7 @@ export default class ListView extends cc.Component {
 					prefab.position = this.getPrefabPosition(prefab,tag);
 					prefab.active = tag >= 0;
 				}
-				prefab.setTag(tag);
+				prefab.zIndex = tag;
 				tag = tag < 0 ? 0 : tag;
 				prefab.getComponent(this.scriptName).init(this._list[tag]);
 				this.content.addChild(prefab,tag);
@@ -368,11 +368,11 @@ export default class ListView extends cc.Component {
 			let bBack = false;
 			for(let i=0; i<this._horizonCount; ++i){
 				let target = this.getMinChild();
-				let tag = target ? target.getTag() + 1 : 0;
+				let tag = target ? target.zIndex + 1 : 0;
 				let prefab = this._pool.get();
 				if (tag-i > this._list.length - 1 || bBack) {
 					target = this.getMaxChild();
-					tag = target ? target.getTag() - 1 : 0;
+					tag = target ? target.zIndex - 1 : 0;
 					if (tag < 0 || !target) {
 						this._pool.put(prefab);
 						return;
@@ -385,7 +385,7 @@ export default class ListView extends cc.Component {
 					prefab.position = this.getPrefabPosition(prefab,tag);
 					prefab.active = tag <= this._list.length-1;
 				}
-				prefab.setTag(tag);
+				prefab.zIndex = tag;
 				tag = tag > this._list.length-1 ? this._list.length-1 : tag;
 				prefab.getComponent(this.scriptName).init(this._list[tag]);
 				this.content.addChild(prefab,tag);
@@ -408,7 +408,7 @@ export default class ListView extends cc.Component {
 			if (!target) {
 				target = child;
 			}
-			else if (child.getTag() < target.getTag()) {
+			else if (child.zIndex < target.zIndex) {
 				target = child;
 			}
 		});
@@ -421,7 +421,7 @@ export default class ListView extends cc.Component {
 			if (!target) {
 				target = child;
 			}
-			else if (child.getTag() > target.getTag()) {
+			else if (child.zIndex > target.zIndex) {
 				target = child;
 			}
 		});
